@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard POSIT — Universidad de Córdoba</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f5f5f3;--bg3:#ebebea;
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --radius-md:8px;--radius-lg:12px;
+  --info-bg:#e6f1fb;--info-text:#185fa5;--info-border:#85b7eb;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1e1e1c;--bg2:#2a2a28;--bg3:#333331;
+    --text:#f0efe8;--text2:#b4b2a9;--text3:#888780;
+    --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.22);
+    --info-bg:#0c447c;--info-text:#b5d4f4;--info-border:#185fa5;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg2);color:var(--text);min-height:100vh;padding:0 0 3rem}
+header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:1.25rem 2rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap}
+.header-logo{width:44px;height:44px;background:var(--info-bg);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.header-text h1{font-size:17px;font-weight:500;color:var(--text);line-height:1.3}
+.header-text p{font-size:13px;color:var(--text2);margin-top:3px}
+.header-badges{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.badge{font-size:12px;padding:4px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border);color:var(--text2);background:var(--bg2)}
+.container{max-width:900px;margin:0 auto;padding:1.5rem 1.25rem}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.5rem}
+.metric{background:var(--bg);border-radius:var(--radius-md);padding:.85rem 1rem;border:0.5px solid var(--border);transition:all .2s}
+.metric .label{font-size:12px;color:var(--text2);margin-bottom:4px}
+.metric .val{font-size:24px;font-weight:500;color:var(--text)}
+.metric .sub{font-size:11px;color:var(--text3);margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1.25rem}
+.tab{padding:7px 16px;font-size:13px;border:0.5px solid var(--border2);border-radius:var(--radius-md);cursor:pointer;background:var(--bg);color:var(--text2);transition:all .15s;font-family:inherit}
+.tab:hover{background:var(--bg2)}
+.tab.active{background:var(--info-bg);color:var(--info-text);border-color:var(--info-border)}
+.section{display:none}.section.active{display:block}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+.chart-box{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem}
+.chart-box.full{grid-column:1/-1}
+.chart-title{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:.75rem}
+.chart-wrap{position:relative;width:100%}
+
+/* Filtro sedes */
+.sede-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:1.25rem;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:.85rem 1rem}
+.sede-filter-label{font-size:12px;color:var(--text2);font-weight:500;margin-right:4px;white-space:nowrap}
+.sede-btn{padding:5px 14px;font-size:12px;border:0.5px solid var(--border2);border-radius:var(--radius-md);cursor:pointer;background:var(--bg2);color:var(--text2);transition:all .15s;font-family:inherit;font-weight:400}
+.sede-btn:hover{border-color:var(--border2);background:var(--bg3)}
+.sede-btn.active{font-weight:500;border-width:1.5px}
+.sede-btn[data-sede="TODAS"].active{background:#e6f1fb;color:#185fa5;border-color:#378ADD}
+.sede-btn[data-sede="MONTERIA"].active{background:#e1f5ee;color:#0f6e56;border-color:#1D9E75}
+.sede-btn[data-sede="BERASTEGUI"].active{background:#fcebeb;color:#a32d2d;border-color:#E24B4A}
+.sede-btn[data-sede="LORICA"].active{background:#faeeda;color:#854f0b;border-color:#EF9F27}
+.sede-btn[data-sede="SAHAGUN"].active{background:#eeedfe;color:#534ab7;border-color:#7F77DD}
+
+.sede-indicator{font-size:12px;color:var(--text3);margin-left:auto}
+
+/* Barras horizontales */
+.bar-h{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.bar-label{min-width:140px;max-width:140px;color:var(--text2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;background:var(--bg2);border-radius:4px;height:20px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:7px;font-size:11px;font-weight:500;color:#fff;white-space:nowrap;transition:width .4s}
+.bar-n{min-width:28px;font-size:11px;color:var(--text3)}
+
+/* Cards de riesgo */
+.risk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:8px}
+.risk-card{border:0.5px solid var(--border);border-radius:var(--radius-md);padding:.8rem;display:flex;flex-direction:column;gap:6px;background:var(--bg);transition:all .25s}
+.risk-name{font-size:13px;font-weight:500;color:var(--text)}
+.risk-bar-wrap{background:var(--bg2);border-radius:4px;height:8px;overflow:hidden}
+.risk-bar-fill{height:100%;border-radius:4px;transition:width .4s}
+.risk-pct{font-size:20px;font-weight:500;transition:color .2s}
+.risk-n{font-size:11px;color:var(--text3)}
+.risk-meta{font-size:11px;color:var(--text3)}
+
+/* Anim entrada */
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.anim{animation:fadeIn .25s ease}
+
+footer{text-align:center;font-size:12px;color:var(--text3);margin-top:2rem;padding-top:1rem;border-top:0.5px solid var(--border)}
+@media(max-width:580px){
+  .chart-row{grid-template-columns:1fr}.chart-box.full{grid-column:1}
+  .bar-label{min-width:90px;max-width:90px}
+  header{padding:1rem}.container{padding:1rem .75rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-logo">📊</div>
+  <div class="header-text">
+    <h1>Riesgos psicosociales en adolescentes — Universidad de Córdoba</h1>
+    <p>Semillero Mostaza · Facultad de Ciencias de la Salud · Instrumento POSIT · 2025-1</p>
+  </div>
+  <div class="header-badges">
+    <span class="badge">n = 311</span>
+    <span class="badge">4 sedes</span>
+    <span class="badge">POSIT 81 ítems</span>
+  </div>
+</header>
+
+<div class="container">
+  <div class="metrics" id="top-metrics"></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="sections"></div>
+  <footer>Proyecto de investigación — Convocatoria Semilleros Unicórdoba 2025 &nbsp;·&nbsp; Datos confidenciales, solo para uso académico</footer>
+</div>
+
+<script>
+const BY_SEDE = {
+  TODAS:{total:311,riesgo_n:224,riesgo_pct:72.0,subescalas:{sustancias:{n:27,pct:8.7,media:0.78,max:19},mental:{n:149,pct:47.9,media:4.74,max:16},familia:{n:107,pct:34.4,media:2.20,max:11},amigos:{n:95,pct:30.5,media:1.15,max:8},educativo:{n:128,pct:41.2,media:2.77,max:16},laboral:{n:72,pct:23.2,media:0.77,max:4},conducta:{n:85,pct:27.3,media:2.68,max:17}},n_areas:{"0":87,"1":54,"2":56,"3":40,"4":29,"5":22,"6":10,"7":13},sexo_riesgo:{Femenino:78.8,Masculino:64.7}},
+  MONTERIA:{total:201,riesgo_n:136,riesgo_pct:67.7,subescalas:{sustancias:{n:12,pct:6.0,media:0.64,max:19},mental:{n:96,pct:47.8,media:4.49,max:16},familia:{n:69,pct:34.3,media:2.12,max:11},amigos:{n:54,pct:26.9,media:0.96,max:8},educativo:{n:68,pct:33.8,media:2.39,max:16},laboral:{n:36,pct:17.9,media:0.59,max:4},conducta:{n:40,pct:19.9,media:2.33,max:17}},n_areas:{"0":65,"1":39,"2":38,"3":21,"4":16,"5":9,"6":3,"7":10},sexo_riesgo:{Femenino:73.9,Masculino:62.0}},
+  BERASTEGUI:{total:59,riesgo_n:50,riesgo_pct:84.7,subescalas:{sustancias:{n:9,pct:15.3,media:1.19,max:19},mental:{n:28,pct:47.5,media:5.56,max:16},familia:{n:23,pct:39.0,media:2.42,max:11},amigos:{n:25,pct:42.4,media:1.73,max:8},educativo:{n:33,pct:55.9,media:3.66,max:16},laboral:{n:19,pct:32.2,media:1.17,max:4},conducta:{n:25,pct:42.4,media:3.61,max:17}},n_areas:{"0":9,"1":9,"2":10,"3":10,"4":8,"5":8,"6":4,"7":1},sexo_riesgo:{Femenino:87.8,Masculino:77.8}},
+  LORICA:{total:30,riesgo_n:21,riesgo_pct:70.0,subescalas:{sustancias:{n:3,pct:10.0,media:0.97,max:19},mental:{n:11,pct:36.7,media:4.07,max:16},familia:{n:8,pct:26.7,media:1.87,max:11},amigos:{n:11,pct:36.7,media:1.37,max:8},educativo:{n:13,pct:43.3,media:2.47,max:16},laboral:{n:12,pct:40.0,media:1.13,max:4},conducta:{n:10,pct:33.3,media:2.57,max:17}},n_areas:{"0":9,"1":5,"2":4,"3":3,"4":2,"5":5,"6":1,"7":1},sexo_riesgo:{Femenino:82.4,Masculino:53.8}},
+  SAHAGUN:{total:21,riesgo_n:17,riesgo_pct:81.0,subescalas:{sustancias:{n:3,pct:14.3,media:0.76,max:19},mental:{n:14,pct:66.7,media:5.71,max:16},familia:{n:7,pct:33.3,media:2.71,max:11},amigos:{n:5,pct:23.8,media:1.10,max:8},educativo:{n:14,pct:66.7,media:4.29,max:16},laboral:{n:5,pct:23.8,media:0.81,max:4},conducta:{n:10,pct:47.6,media:3.62,max:17}},n_areas:{"0":4,"1":1,"2":4,"3":6,"4":3,"5":0,"6":2,"7":1},sexo_riesgo:{Femenino:80.0,Masculino:81.8}}
+};
+
+const SUB_INFO = {
+  sustancias:{nombre:"Uso de sustancias",color:"#1D9E75"},
+  mental:    {nombre:"Salud mental",      color:"#E24B4A"},
+  familia:   {nombre:"Rel. familiares",   color:"#D85A30"},
+  amigos:    {nombre:"Rel. con amigos",   color:"#D4537E"},
+  educativo: {nombre:"Nivel educativo",   color:"#BA7517"},
+  laboral:   {nombre:"Interés laboral",   color:"#378ADD"},
+  conducta:  {nombre:"Conducta agresiva", color:"#7F77DD"},
+};
+
+const SEDE_COLORS = {TODAS:"#378ADD",MONTERIA:"#1D9E75",BERASTEGUI:"#E24B4A",LORICA:"#EF9F27",SAHAGUN:"#7F77DD"};
+const SEDE_LABELS = {TODAS:"Todas las sedes",MONTERIA:"Montería",BERASTEGUI:"Berástegui",LORICA:"Lorica",SAHAGUN:"Sahagún"};
+
+const C_BLUE  = ["#B5D4F4","#85B7EB","#378ADD","#185FA5","#0C447C","#042C53"];
+const C_TEAL  = ["#9FE1CB","#5DCAA5","#1D9E75","#0F6E56","#085041"];
+const C_PINK  = ["#F4C0D1","#ED93B1","#D4537E","#993556","#72243E"];
+const C_RISK  = "#E24B4A";
+const C_SAFE  = "#1D9E75";
+
+const isDark  = window.matchMedia('(prefers-color-scheme:dark)').matches;
+const CHART_TEXT  = isDark ? "#b4b2a9" : "#5f5e5a";
+const GRID_COLOR  = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)";
+
+let currentSede = "TODAS";
+let charts = {};
+
+const DATA_SOCIO = {
+  sede:{MONTERIA:201,BERASTEGUI:59,LORICA:30,SAHAGUN:21},
+  sexo:{F:160,M:150,NB:1},edad:{14:1,16:76,17:234},estrato:{1:286,2:24,3:1},
+  facultad:{"Educación y C. Humanas":66,"Ciencias de la Salud":52,"Económicas-Jurídicas":51,"Ingenierías":44,"Ciencias Básicas":41,"Med. Veterinaria":36,"Ciencias Agrícolas":21},
+  sisben:{"Grupo A":208,"Grupo B":73,"Sin dato":17,"Grupo C":13},
+  vive:{"Ambos padres":151,"Solo la madre":98,"Otros familiares":52,"Solo el padre":5,"Solo/a":5},
+  zona:{Urbano:172,Rural:139},
+  internet:{"Con acceso":210,"Sin acceso":101},servicios:{Todos:189,Algunos:118,Ninguno:4},
+  edu_padre:{"Secundaria":133,"Sec. Incompleta":53,"Profesional":46,"Técnica":32,"Tecnológica":13,"Primaria Inc.":11,"Posgrado":8,"Primaria":8,"Analfabeta":7},
+  edu_madre:{"Secundaria":113,"Técnica":65,"Sec. Incompleta":37,"Profesional":30,"Primaria Inc.":21,"Tecnológica":17,"Primaria":14,"Posgrado":11,"Analfabeta":1},
+  act_fisica:{Nunca:66,"1-2×/sem":140,"3-4×/sem":63,"5+/sem":42},
+  redes:{"<1h/día":20,"1-3h/día":154,"4-6h/día":111,"+6h/día":26},
+  total:311
+};
+
+function pct(n,t){return Math.round(n/t*100)}
+
+function hBar(data,total,colors,maxShow=9){
+  const entries=Object.entries(data).slice(0,maxShow);
+  const mx=Math.max(...entries.map(([,v])=>v));
+  return `<div class="bar-h">${entries.map(([k,v],i)=>{
+    const w=Math.round(v/mx*100),c=colors[i%colors.length],p=pct(v,total);
+    return `<div class="bar-row"><div class="bar-label" title="${k}">${k}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${c}">${p}%</div></div><div class="bar-n">${v}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function baseOpts(extra={}){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},...(extra.plugins||{})},scales:extra.scales||{},...(extra.rest||{})}}
+
+function scaleOpts(yMax,isPct=false){
+  return{y:{beginAtZero:true,max:yMax,grid:{color:GRID_COLOR},ticks:{color:CHART_TEXT,font:{size:11},callback:isPct?v=>v+'%':undefined}},x:{grid:{display:false},ticks:{color:CHART_TEXT,font:{size:11},maxRotation:0}}};
+}
+
+// ---- Top metrics (global siempre) ------------------------------------------
+function renderMetrics(sede){
+  const d = BY_SEDE[sede];
+  const topSub = Object.entries(d.subescalas).sort((a,b)=>b[1].pct-a[1].pct)[0];
+  document.getElementById('top-metrics').innerHTML=[
+    {val:d.total,       label:"Estudiantes",       sub: sede==="TODAS"?"muestra total":SEDE_LABELS[sede]},
+    {val:d.riesgo_pct+'%', label:"Con riesgo global", sub:"≥ 1 área POSIT"},
+    {val:d.riesgo_n,    label:"En riesgo",          sub:"estudiantes"},
+    {val:topSub[1].pct+'%',label:"Mayor riesgo",    sub:SUB_INFO[topSub[0]].nombre},
+  ].map(m=>`<div class="metric anim"><div class="label">${m.label}</div><div class="val">${m.val}</div><div class="sub">${m.sub}</div></div>`).join('');
+}
+
+// ---- Tabs ------------------------------------------------------------------
+const TABS=[{id:"socio",label:"Sociodemografía"},{id:"familia",label:"Familia y entorno"},{id:"habitos",label:"Hábitos"},{id:"riesgo",label:"Riesgo POSIT"}];
+const tabsEl=document.getElementById('tabs');
+const secsEl=document.getElementById('sections');
+const built={};
+
+TABS.forEach((t,i)=>{
+  const btn=document.createElement('button');
+  btn.className='tab'+(i===0?' active':'');btn.textContent=t.label;tabsEl.appendChild(btn);
+  const sec=document.createElement('div');sec.className='section'+(i===0?' active':'');sec.id='sec-'+t.id;secsEl.appendChild(sec);
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');sec.classList.add('active');
+    builders[t.id]();
+  });
+});
+
+// ---- Sede filter (solo en pestaña riesgo) ----------------------------------
+function buildSedeFilter(){
+  const sedes=[{k:"TODAS",label:"Todas"},{k:"MONTERIA",label:"Montería"},{k:"BERASTEGUI",label:"Berástegui"},{k:"LORICA",label:"Lorica"},{k:"SAHAGUN",label:"Sahagún"}];
+  const div=document.createElement('div');div.className='sede-filter';
+  div.innerHTML=`<span class="sede-filter-label">Filtrar por sede:</span>`+
+    sedes.map(s=>`<button class="sede-btn${currentSede===s.k?' active':''}" data-sede="${s.k}">${s.label}</button>`).join('')+
+    `<span class="sede-indicator" id="sede-count">${BY_SEDE[currentSede].total} estudiantes</span>`;
+  div.querySelectorAll('.sede-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      currentSede=btn.dataset.sede;
+      div.querySelectorAll('.sede-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('sede-count').textContent=BY_SEDE[currentSede].total+' estudiantes';
+      renderMetrics(currentSede);
+      updateRiesgoCharts();
+    });
+  });
+  return div;
+}
+
+// ---- Update riesgo charts on sede change -----------------------------------
+function updateRiesgoCharts(){
+  const d=BY_SEDE[currentSede];
+  const color=SEDE_COLORS[currentSede];
+
+  // Risk cards
+  const container=document.getElementById('risk-cards-container');
+  if(container){
+    container.innerHTML=Object.entries(d.subescalas)
+      .sort((a,b)=>b[1].pct-a[1].pct)
+      .map(([key,s])=>`
+        <div class="risk-card anim">
+          <div class="risk-name">${SUB_INFO[key].nombre}</div>
+          <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:${s.pct}%;background:${SUB_INFO[key].color}"></div></div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span class="risk-pct" style="color:${SUB_INFO[key].color}">${s.pct}%</span>
+            <span class="risk-n">${s.n} estudiantes en riesgo</span>
+          </div>
+          <div class="risk-meta">media ${s.media} / máx ${s.max} pts</div>
+        </div>`).join('');
+  }
+
+  // Gráfico riesgo global (donut)
+  if(charts.rglobal){
+    charts.rglobal.data.datasets[0].data=[d.riesgo_n, d.total-d.riesgo_n];
+    charts.rglobal.update('active');
+  }
+
+  // Gráfico subescalas (bar horizontal)
+  if(charts.rsubs){
+    const sorted=Object.entries(d.subescalas).sort((a,b)=>b[1].pct-a[1].pct);
+    charts.rsubs.data.labels=sorted.map(([k])=>SUB_INFO[k].nombre);
+    charts.rsubs.data.datasets[0].data=sorted.map(([,v])=>v.pct);
+    charts.rsubs.data.datasets[0].backgroundColor=sorted.map(([k])=>SUB_INFO[k].color);
+    charts.rsubs.update('active');
+  }
+
+  // Gráfico áreas
+  if(charts.nareas){
+    const allKeys=["0","1","2","3","4","5","6","7"];
+    charts.nareas.data.datasets[0].data=allKeys.map(k=>d.n_areas[k]||0);
+    charts.nareas.update('active');
+  }
+
+  // Gráfico sexo
+  if(charts.rsexo){
+    const vals=Object.values(d.sexo_riesgo);
+    charts.rsexo.data.labels=Object.keys(d.sexo_riesgo);
+    charts.rsexo.data.datasets[0].data=vals;
+    charts.rsexo.update('active');
+  }
+}
+
+// ---- Builders --------------------------------------------------------------
+const builders={
+  socio(){
+    if(built.socio)return;built.socio=true;
+    const sec=document.getElementById('sec-socio');
+    sec.innerHTML=`<div class="chart-row">
+      <div class="chart-box"><div class="chart-title">Distribución por sede</div><div class="chart-wrap" style="height:200px"><canvas id="c-sede" role="img" aria-label="Distribución por sede"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Sexo biológico</div><div class="chart-wrap" style="height:200px"><canvas id="c-sexo" role="img" aria-label="Sexo biológico"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Edad</div><div class="chart-wrap" style="height:200px"><canvas id="c-edad" role="img" aria-label="Edad"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Estrato socioeconómico</div><div class="chart-wrap" style="height:200px"><canvas id="c-estrato" role="img" aria-label="Estrato"></canvas></div></div>
+      <div class="chart-box full"><div class="chart-title">Facultad</div>${hBar(DATA_SOCIO.facultad,DATA_SOCIO.total,C_BLUE)}</div>
+      <div class="chart-box full"><div class="chart-title">Nivel SISBEN</div><div class="chart-wrap" style="height:160px"><canvas id="c-sisben" role="img" aria-label="SISBEN"></canvas></div></div>
+    </div>`;
+    new Chart(document.getElementById('c-sede'),{type:'bar',data:{labels:Object.keys(DATA_SOCIO.sede),datasets:[{data:Object.values(DATA_SOCIO.sede),backgroundColor:C_BLUE,borderRadius:4}]},options:baseOpts({scales:scaleOpts(220)})});
+    new Chart(document.getElementById('c-sexo'),{type:'doughnut',data:{labels:['Femenino','Masculino','No binario'],datasets:[{data:[160,150,1],backgroundColor:["#D4537E","#378ADD","#888780"]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:11},boxWidth:12}}}}});
+    new Chart(document.getElementById('c-edad'),{type:'bar',data:{labels:['14 años','16 años','17 años'],datasets:[{data:[1,76,234],backgroundColor:C_TEAL,borderRadius:4}]},options:baseOpts({scales:scaleOpts(250)})});
+    new Chart(document.getElementById('c-estrato'),{type:'doughnut',data:{labels:['Estrato 1','Estrato 2','Estrato 3'],datasets:[{data:[286,24,1],backgroundColor:["#E24B4A","#EF9F27","#1D9E75"]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:11},boxWidth:12}}}}});
+    new Chart(document.getElementById('c-sisben'),{type:'bar',data:{labels:Object.keys(DATA_SOCIO.sisben),datasets:[{data:Object.values(DATA_SOCIO.sisben),backgroundColor:["#E24B4A","#EF9F27","#888780","#1D9E75"],borderRadius:4}]},options:baseOpts({scales:scaleOpts(220)})});
+  },
+
+  familia(){
+    if(built.familia)return;built.familia=true;
+    const sec=document.getElementById('sec-familia');
+    sec.innerHTML=`<div class="chart-row">
+      <div class="chart-box"><div class="chart-title">¿Con quién vive?</div><div class="chart-wrap" style="height:220px"><canvas id="c-vive" role="img" aria-label="Con quién vive"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Zona de residencia</div><div class="chart-wrap" style="height:220px"><canvas id="c-zona" role="img" aria-label="Zona de residencia"></canvas></div></div>
+      <div class="chart-box full"><div class="chart-title">Nivel educativo del padre</div>${hBar(DATA_SOCIO.edu_padre,DATA_SOCIO.total,C_BLUE)}</div>
+      <div class="chart-box full"><div class="chart-title">Nivel educativo de la madre</div>${hBar(DATA_SOCIO.edu_madre,DATA_SOCIO.total,C_PINK)}</div>
+      <div class="chart-box"><div class="chart-title">Acceso a internet</div><div class="chart-wrap" style="height:180px"><canvas id="c-internet" role="img" aria-label="Acceso internet"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Acceso a servicios básicos</div><div class="chart-wrap" style="height:180px"><canvas id="c-servicios" role="img" aria-label="Servicios básicos"></canvas></div></div>
+    </div>`;
+    new Chart(document.getElementById('c-vive'),{type:'doughnut',data:{labels:Object.keys(DATA_SOCIO.vive),datasets:[{data:Object.values(DATA_SOCIO.vive),backgroundColor:["#378ADD","#D4537E","#EF9F27","#1D9E75","#888780"]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:10},boxWidth:10}}}}});
+    new Chart(document.getElementById('c-zona'),{type:'doughnut',data:{labels:['Urbano','Rural'],datasets:[{data:[172,139],backgroundColor:["#378ADD","#1D9E75"]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:11},boxWidth:12}}}}});
+    new Chart(document.getElementById('c-internet'),{type:'doughnut',data:{labels:['Con acceso','Sin acceso'],datasets:[{data:[210,101],backgroundColor:[C_SAFE,C_RISK]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:11},boxWidth:12}}}}});
+    new Chart(document.getElementById('c-servicios'),{type:'bar',data:{labels:Object.keys(DATA_SOCIO.servicios),datasets:[{data:Object.values(DATA_SOCIO.servicios),backgroundColor:[C_SAFE,"#EF9F27",C_RISK],borderRadius:4}]},options:baseOpts({scales:scaleOpts(210)})});
+  },
+
+  habitos(){
+    if(built.habitos)return;built.habitos=true;
+    const sec=document.getElementById('sec-habitos');
+    sec.innerHTML=`<div class="chart-row">
+      <div class="chart-box"><div class="chart-title">Actividad física semanal</div><div class="chart-wrap" style="height:240px"><canvas id="c-actfis" role="img" aria-label="Actividad física"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">Tiempo en redes sociales diario</div><div class="chart-wrap" style="height:240px"><canvas id="c-redes" role="img" aria-label="Redes sociales"></canvas></div></div>
+    </div>`;
+    new Chart(document.getElementById('c-actfis'),{type:'bar',data:{labels:Object.keys(DATA_SOCIO.act_fisica),datasets:[{data:Object.values(DATA_SOCIO.act_fisica),backgroundColor:[C_RISK,"#EF9F27",C_SAFE,"#0F6E56"],borderRadius:4}]},options:baseOpts({scales:scaleOpts(160)})});
+    new Chart(document.getElementById('c-redes'),{type:'bar',data:{labels:Object.keys(DATA_SOCIO.redes),datasets:[{data:Object.values(DATA_SOCIO.redes),backgroundColor:[C_SAFE,"#378ADD","#EF9F27",C_RISK],borderRadius:4}]},options:baseOpts({scales:scaleOpts(170)})});
+  },
+
+  riesgo(){
+    if(built.riesgo){updateRiesgoCharts();return;}built.riesgo=true;
+    const sec=document.getElementById('sec-riesgo');
+    const filter=buildSedeFilter();
+    sec.appendChild(filter);
+
+    const d=BY_SEDE[currentSede];
+    const sorted=Object.entries(d.subescalas).sort((a,b)=>b[1].pct-a[1].pct);
+
+    const content=document.createElement('div');
+    content.innerHTML=`<div class="chart-row">
+      <div class="chart-box"><div class="chart-title">Riesgo global</div><div class="chart-wrap" style="height:210px"><canvas id="c-rglobal" role="img" aria-label="Riesgo global"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">% riesgo por subescala</div><div class="chart-wrap" style="height:210px"><canvas id="c-rsubs" role="img" aria-label="Riesgo por subescala"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">% riesgo por sexo</div><div class="chart-wrap" style="height:210px"><canvas id="c-rsexo" role="img" aria-label="Riesgo por sexo"></canvas></div></div>
+      <div class="chart-box"><div class="chart-title">N° de áreas en riesgo por estudiante</div><div class="chart-wrap" style="height:210px"><canvas id="c-nareas" role="img" aria-label="Áreas en riesgo"></canvas></div></div>
+      <div class="chart-box full"><div class="chart-title">Prevalencia de riesgo por subescala POSIT</div><div class="risk-grid" id="risk-cards-container"></div></div>
+    </div>`;
+    sec.appendChild(content);
+
+    // Renderizar cards iniciales
+    document.getElementById('risk-cards-container').innerHTML=sorted.map(([key,s])=>`
+      <div class="risk-card">
+        <div class="risk-name">${SUB_INFO[key].nombre}</div>
+        <div class="risk-bar-wrap"><div class="risk-bar-fill" style="width:${s.pct}%;background:${SUB_INFO[key].color}"></div></div>
+        <div style="display:flex;align-items:baseline;gap:6px">
+          <span class="risk-pct" style="color:${SUB_INFO[key].color}">${s.pct}%</span>
+          <span class="risk-n">${s.n} estudiantes en riesgo</span>
+        </div>
+        <div class="risk-meta">media ${s.media} / máx ${s.max} pts</div>
+      </div>`).join('');
+
+    charts.rglobal=new Chart(document.getElementById('c-rglobal'),{type:'doughnut',data:{labels:['En riesgo','Sin riesgo'],datasets:[{data:[d.riesgo_n,d.total-d.riesgo_n],backgroundColor:[C_RISK,C_SAFE]}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:CHART_TEXT,font:{size:11},boxWidth:12}}}}});
+
+    charts.rsubs=new Chart(document.getElementById('c-rsubs'),{type:'bar',data:{
+      labels:sorted.map(([k])=>SUB_INFO[k].nombre),
+      datasets:[{data:sorted.map(([,v])=>v.pct),backgroundColor:sorted.map(([k])=>SUB_INFO[k].color),borderRadius:4}]
+    },options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:GRID_COLOR},ticks:{color:CHART_TEXT,font:{size:10},callback:v=>v+'%'}},x:{grid:{display:false},ticks:{color:CHART_TEXT,font:{size:9},maxRotation:30}}}}});
+
+    charts.rsexo=new Chart(document.getElementById('c-rsexo'),{type:'bar',data:{labels:Object.keys(d.sexo_riesgo),datasets:[{data:Object.values(d.sexo_riesgo),backgroundColor:["#D4537E","#378ADD"],borderRadius:4}]},options:baseOpts({scales:scaleOpts(100,true)})});
+
+    const allKeys=["0","1","2","3","4","5","6","7"];
+    charts.nareas=new Chart(document.getElementById('c-nareas'),{type:'bar',data:{labels:allKeys.map(k=>k+(k==='1'?' área':' áreas')),datasets:[{data:allKeys.map(k=>d.n_areas[k]||0),backgroundColor:["#1D9E75","#5DCAA5","#EF9F27","#BA7517","#E24B4A","#A32D2D","#791F1F","#501313"],borderRadius:4}]},options:baseOpts({scales:scaleOpts(70)})});
+  }
+};
+
+// Inicializar
+renderMetrics("TODAS");
+builders.socio();
+</script>
+</body>
+</html>
